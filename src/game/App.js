@@ -3,44 +3,13 @@ import { Client } from 'boardgame.io/react';
 import { Game } from 'boardgame.io/core';
 
 import '../App.css';
-import styles from './styles/styles';
+import Styles from './styles/Styles';
 import StartPositions from './constants/StartPositions';
+import * as Utils from './utils/Utils';
+import RenderBoard from './display/BoardRenderer';
 
 const dims = 4;
-
-const adjCells = [
-	{y: -1, x: -1},
-	{y: -1, x: 0},
-	{y: -1, x: 1},
-	{y: 0, x: -1},
-	{y: 0, x: 1},
-	{y: 1, x: -1},
-	{y: 1, x: 0},
-	{y: 1, x: 1},
-]
-
-function isValidCoord(y, x) {
-	return y > -1 && x > -1 && y < dims && x < dims;
-}
-
-function pointsOnSameLine(y1, x1, y2, x2) {
-	return y1 === y2 || x1 === x2 || y1 - x1 === y2 - x2 || y1 + x1 === y2 + x2;
-}
-
-// ey and ex are the exception since they represent the queen's original position
-function isPathToPointClear(G, y, x, sy, sx, ey, ex) {
-	var cells = G.cells;
-	var dy = (y - sy) / Math.max(Math.abs(y - sy), 1);
-	var dx = (x - sx) / Math.max(Math.abs(x - sx), 1);
-	do {
-		sy += dy;
-		sx += dx;
-		if (cells[sy][sx] !== 'empty' && !(sy === ey && sx === ex)) {
-			return false;
-		}
-	} while (!(sy === y && sx === x));
-	return true;
-}
+const boardWidth = 300;
 
 function playerToColor(player) {
 	return player === '0' ? 'white' : 'black';
@@ -48,17 +17,6 @@ function playerToColor(player) {
 
 function getOpposingPlayer(player) {
 	return player === '0' ? '1' : '0';
-}
-
-function typeToDisplay(type) {
-	switch (type) {
-		case 'empty':
-			return '';
-		case 'filled':
-			return '+';
-		default:
-			return type;
-	}
 }
 
 function ucFirst(s) {
@@ -71,10 +29,10 @@ function isGameOver(G, ctx) {
 	for (let i in G[color]) {
 		var y = G[color][i].y;
 		var x = G[color][i].x;
-		for (let d in adjCells) {
-			var ny = adjCells[d].y + y;
-			var nx = adjCells[d].x + x;
-			if (isValidCoord(ny, nx) && G.cells[ny][nx] === 'empty') {
+		for (let d in Utils.adjCells) {
+			var ny = Utils.adjCells[d].y + y;
+			var nx = Utils.adjCells[d].x + x;
+			if (Utils.isValidCoord(ny, nx, dims) && G.cells[ny][nx] === 'empty') {
 				return false;
 			}
 		}
@@ -116,9 +74,6 @@ const Amazons = Game({
 			G.cells[sy][sx] = 'empty';
 			G.cells[ey][ex] = ctx.currentPlayer;
 			G.cells[ay][ax] = 'filled';
-
-			// Why doesn't work? >:(
-			// G[color].map(elem => elem.y === sy && elem.x === sx ? { y: ey, x: ex } : elem);
 			for (let i in G[color]) {
 				if (G[color][i].y === sy && G[color][i].x === sx) {
 					G[color][i] = { y: ey, x: ex };
@@ -148,6 +103,28 @@ class Board extends React.Component {
 			py: 0,
 			px: 0
 		}
+		this.canvasRef = React.createRef();
+		document.body.style.background = '#222';
+	}
+
+	componentDidMount() {
+
+		// Canvas needs to render; not ready until component is mounted
+		this.forceUpdate();
+
+		var canvas = this.refs.canvas;
+		canvas.addEventListener('click', function(event) {
+			var rect = canvas.getBoundingClientRect();
+			var squareDims = boardWidth / dims;
+			var y = event.pageY - rect.top;
+			var x = event.pageX - rect.left;
+			var i = Math.floor(y / squareDims);
+			var j = Math.floor(x / squareDims);
+			this.onClick(i, j);
+		}.bind(this));
+
+		// Prevent double clicking from selecting other elements on page
+		canvas.onmousedown = () => false;
 	}
 
 	onClick(y, x) {
@@ -161,7 +138,7 @@ class Board extends React.Component {
 		var py = this.state.py;
 		var px = this.state.px;
 		if (this.state.hasPieceMoved) {
-			if (pointsOnSameLine(y, x, py, px) && isPathToPointClear(this.props.G, y, x, py, px, sy, sx) &&
+			if (Utils.pointsOnSameLine(y, x, py, px) && Utils.isPathToPointClear(cells, y, x, py, px, sy, sx) &&
 				!(y === py && x === px)) {
 				this.setState({
 					hasPieceMoved: false
@@ -179,7 +156,8 @@ class Board extends React.Component {
 						sx: x
 					})
 				}
-				else if (pointsOnSameLine(y, x, sy, sx) && isPathToPointClear(this.props.G, y, x, sy, sx, -1, -1)) {
+				else if (Utils.pointsOnSameLine(y, x, sy, sx) &&
+					Utils.isPathToPointClear(cells, y, x, sy, sx, -1, -1)) {
 					this.setState({
 						hasPieceMoved: true,
 						isCellSelected: false,
@@ -221,29 +199,17 @@ class Board extends React.Component {
 			cells[py][px] = player;
 		}
 
-		var tbody = [];
-		for (let i = 0; i < dims; ++i) {
-			var row = [];
-			for (let j = 0; j < dims; ++j) {
-				var id = dims * i + j;
-				var cell = cells[i][j];
-				var isCellSelected = this.state.isCellSelected && this.state.sy === i && this.state.sx === j;
-				row.push(
-					<td key={id} style={isCellSelected ? styles.highlightedCell : styles.cellStyle}
-						onClick={() => this.onClick(i, j)}>
-						{typeToDisplay(cell)}
-					</td>
-				);
-			}
-			tbody.push(<tr key={i} style={{flex: 1, marginBottom: -4}}>{row}</tr>);
+		if (this.refs.canvas) {
+			var canvas = this.refs.canvas;
+			var context = canvas.getContext('2d');
+			RenderBoard(context, cells, this.props.ctx, this.state, boardWidth, dims);
 		}
 
 		return (
-			// maybe use styles.centered
-			<div>
-				<div>{ucFirst(color)}'s turn</div>
-				<table id='board'><tbody>{tbody}</tbody></table>
-				<div>{winner}</div>
+			<div style={Styles.centered}>
+				<div style={{color: 'white', margin: 5}}>{ucFirst(color)}'s turn</div>
+				<canvas ref='canvas' width={boardWidth} height={boardWidth} style={{border: '5px solid white'}}/>
+				<div style={{color: 'white', margin: 5}}>{winner}</div>
 			</div>
 		);
 	}

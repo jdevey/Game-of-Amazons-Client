@@ -1,7 +1,6 @@
 export default {
 	centered: {
 		display: 'flex',
-		flex: 1,
 		flexDirection: 'column',
 		justifyContent: 'center',
 		alignItems: 'center',
@@ -23,5 +22,13 @@ export default {
 	},
 	test: {
 		flex: 1
+	},
+	board: {
+		display: 'flex',
+		flex: 1,
+		flexDirection: 'column',
+		justifyContent: 'center',
+		alignItems: 'center',
+		border: '2px solid black'
 	}
 };
