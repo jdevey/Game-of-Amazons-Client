@@ -3,7 +3,7 @@ import * as Utils from '../utils/Utils';
 function drawCheckerboard(context, dims, square) {
 	for (let i = 0; i < dims; ++i) {
 		for (let j = 0; j < dims; ++j) {
-			context.fillStyle = (i + j) & 1 ? '#666' : '#AAA';
+			context.fillStyle = ~(i + j) & 1 ? '#666' : '#AAA';
 			context.beginPath();
 			context.rect(j * square, i * square, j * square + square, i * square + square);
 			context.fill();

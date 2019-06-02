@@ -30,5 +30,14 @@ export default {
 		justifyContent: 'center',
 		alignItems: 'center',
 		border: '2px solid black'
-	}
+	},
+	button: {
+		backgroundColor: 'rgba(240, 240, 240, 0.8)',
+		padding: 5,
+		margin: 10,
+		borderWidth: 5,
+		borderColor: 'rgba(200, 200, 200, 0.8)',
+		width: 45,
+		fontSize: 18
+	},
 };
