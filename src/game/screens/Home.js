@@ -1,7 +1,6 @@
 import React from 'react';
 import { Client } from 'boardgame.io/react';
 import { Game } from 'boardgame.io/core';
-import { Simulate } from 'boardgame.io/core';
 
 import Styles from '../styles/Styles';
 import StartPositions from '../constants/StartPositions';
